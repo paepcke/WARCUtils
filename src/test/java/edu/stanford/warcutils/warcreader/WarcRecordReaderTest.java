@@ -1,14 +1,17 @@
-package test.java.edu.stanford.pigir.warc.nohadoop;
+package edu.stanford.warcutils.warcreader;
 
-import static org.junit.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
+
 
 import java.io.File;
 import java.io.IOException;
 
-import main.java.edu.stanford.pigir.warc.nohadoop.WarcRecord;
-import main.java.edu.stanford.pigir.warc.nohadoop.WarcRecordReader;
+import edu.stanford.warcutils.warcreader.WarcRecordReader;
 
-public class WarcRecordReaderNoHadoopTest {
+public class WarcRecordReaderTest {
 
 	File testWarcFile0_18;
 	File testWarcFile0_18GZipped;
@@ -78,7 +81,6 @@ public class WarcRecordReaderNoHadoopTest {
 		assertEquals(len2ndContentRecord, Integer.parseInt(record.get(WarcRecord.CONTENT_LENGTH)));
 	}
 
-	@Test
 	public void testWarc0_18GZipped() throws IOException {
 		assertTrue(warcReader0_18GZipped.nextKeyValue());
 		long key = warcReader0_18GZipped.getCurrentKey();
@@ -102,7 +104,6 @@ public class WarcRecordReaderNoHadoopTest {
 		assertEquals(len2ndContentRecord, Integer.parseInt(record.get(WarcRecord.CONTENT_LENGTH)));
 	}
 	
-	@Test
 	public void testWarc1_0() throws IOException {
 		assertTrue(warcReader1_0.nextKeyValue());
 		long key = warcReader1_0.getCurrentKey();

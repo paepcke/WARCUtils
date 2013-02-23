@@ -1,4 +1,4 @@
-package edu.stanford.pigir.warc.nohadoop;
+package edu.stanford.warcutils.warcreader;
 
 /**
  * Container for a generic Warc Record 
@@ -50,11 +50,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.hadoop.io.Text;
-
-import edu.stanford.pigir.pigudf.LineAndChunkReader;
-
 
 public class WarcRecord extends Text implements WarcRecordMap {
 

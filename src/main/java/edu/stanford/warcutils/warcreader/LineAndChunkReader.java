@@ -4,9 +4,6 @@ package edu.stanford.warcutils.warcreader;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.Text;
-
 public class LineAndChunkReader {
   private static final int DEFAULT_BUFFER_SIZE = 64 * 1024;
   private int bufferSize = DEFAULT_BUFFER_SIZE;

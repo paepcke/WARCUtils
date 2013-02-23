@@ -1,14 +1,10 @@
-package edu.stanford.pigir.warc.nohadoop;
+package edu.stanford.warcutils.warcreader;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.zip.GZIPInputStream;
-
-import org.apache.hadoop.fs.FSDataInputStream;
-
-import edu.stanford.pigir.pigudf.LineAndChunkReader;
 
 
 /**

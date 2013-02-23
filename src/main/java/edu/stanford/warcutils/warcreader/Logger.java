@@ -1,4 +1,4 @@
-package edu.stanford.pigir.warc.nohadoop;
+package edu.stanford.warcutils.warcreader;
 
 public class Logger {
 	

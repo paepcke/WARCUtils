@@ -1,7 +1,4 @@
-/**
- * 
- */
-package edu.stanford.pigir.warc.nohadoop;
+package edu.stanford.warcutils.warcreader;
 
 import java.util.Collection;
 import java.util.Map;
