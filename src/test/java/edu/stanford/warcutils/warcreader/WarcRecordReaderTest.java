@@ -1,5 +1,6 @@
 package edu.stanford.warcutils.warcreader;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
@@ -16,9 +17,11 @@ public class WarcRecordReaderTest {
 	File testWarcFile0_18;
 	File testWarcFile0_18GZipped;
 	File testWarcFile1_0;
+	File testWarcDir;
 	WarcRecordReader warcReader0_18;
 	WarcRecordReader warcReader1_0;
 	WarcRecordReader warcReader0_18GZipped;
+	WarcRecordReader warcReaderDir;
 	
 	@Before
 	public void setUp() throws Exception {
@@ -55,6 +58,14 @@ public class WarcRecordReaderTest {
 			//System.out.println("File length is " + testWarcFile0_18GZipped.length());
 		}
 		warcReader0_18GZipped = new WarcRecordReader(testWarcFile0_18GZipped);
+
+		//---------- Directory of WARC files mixed gzipped and clear -------------
+
+		testWarcDir = new File("src/test/resources/warcdir");
+		if (!testWarcDir.exists()) {
+			System.out.println("Directory " + testWarcDir + " does not exist.");
+		}
+		warcReaderDir = new WarcRecordReader(testWarcDir);
 	}
 
 	@Test
@@ -81,6 +92,7 @@ public class WarcRecordReaderTest {
 		assertEquals(len2ndContentRecord, Integer.parseInt(record.get(WarcRecord.CONTENT_LENGTH)));
 	}
 
+	@Test
 	public void testWarc0_18GZipped() throws IOException {
 		assertTrue(warcReader0_18GZipped.nextKeyValue());
 		long key = warcReader0_18GZipped.getCurrentKey();
@@ -104,6 +116,7 @@ public class WarcRecordReaderTest {
 		assertEquals(len2ndContentRecord, Integer.parseInt(record.get(WarcRecord.CONTENT_LENGTH)));
 	}
 	
+	@Test
 	public void testWarc1_0() throws IOException {
 		assertTrue(warcReader1_0.nextKeyValue());
 		long key = warcReader1_0.getCurrentKey();
@@ -117,7 +130,13 @@ public class WarcRecordReaderTest {
 		assertEquals(lenFirstContentRecord, Integer.parseInt(record.get(WarcRecord.CONTENT_LENGTH)));
 		String content = record.get(WarcRecord.CONTENT);
 		assertEquals(lenFirstContentRecord, content.length());
-		
-	
+	}
+	@Test
+	public void testWarcDir() throws IOException {
+		// Test whether all 51 entries are present (45 in the clear file, 6 in the .gz file, and 0 in the empty file:
+		for (int i=0; i<51; i++) {
+			assertTrue(warcReaderDir.nextKeyValue());
+		}
+		assertFalse(warcReaderDir.nextKeyValue());
 	}
 }

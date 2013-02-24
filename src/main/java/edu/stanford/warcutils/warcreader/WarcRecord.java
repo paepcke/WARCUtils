@@ -54,7 +54,7 @@ import java.util.Set;
 public class WarcRecord extends Text implements WarcRecordMap {
 
 	// Class variables:
-	
+
 	public static final String CONTENT = "content";
 
 	// Lookup table for properly capitalized ISO Warc header field
@@ -104,17 +104,17 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	public static final String WARC_SEGMENT_ORIGIN_ID = "warc-segment-origin-id";
 	public static final String WARC_SEGMENT_NUMBER = "warc-segment-number";
 	public static final String WARC_SEGMENT_TOTAL_LENGTH = "warc-segment-total-length";
-		
+
 	private static final String[] mandatoryHeaderFields = {WARC_RECORD_ID,
-														   CONTENT_LENGTH,
-														   WARC_DATE,
-														   WARC_TYPE
+		CONTENT_LENGTH,
+		WARC_DATE,
+		WARC_TYPE
 	};
-	
+
 	// Provide a constructor for each of the header datatypes:
 	private static Constructor<String> strConstructor = null;
 	private static Constructor<Integer> intConstructor = null;
-	
+
 	{
 		try {
 			strConstructor = String.class.getConstructor(String.class);
@@ -135,10 +135,10 @@ public class WarcRecord extends Text implements WarcRecordMap {
 			put(WARC_TYPE, strConstructor);
 		}
 	};
-	
+
 	public static final boolean INCLUDE_CONTENT = true; 
 	public static final boolean DONT_INCLUDE_CONTENT = false; 
-	
+
 	// Fast method for looking up whether a header key is mandatory or not:
 	@SuppressWarnings("serial")
 	private static final HashMap<String,Boolean> mandatoryHeaderFieldsLookup = new HashMap<String, Boolean>() {
@@ -148,16 +148,16 @@ public class WarcRecord extends Text implements WarcRecordMap {
 			}
 		}
 	};
-	
+
 	// Marker to look for when finding the next WARC record wbRecordReader a stream:
-	public static String WARC_VERSION = "WARC/0.18";
-	public static String WARC_VERSION_LINE = "WARC/0.18\n";
+	public static String[] WARC_VERSION = {"WARC/0.18", "WARC/1.0"};
+	public static String[] WARC_VERSION_LINE = {"WARC/0.18\n", "WARC/1.0\n"};
 	private static String NEWLINE="\n";
-	
+
 	private static HashMap<String,String> tmpHeaderMap = new HashMap<String, String>();
 	private static Long tmpGrandTotalBytesRead = 0L;
 	private static HashSet<String> tmpOptionalHeaderKeys = new HashSet<String>();
-	
+
 	// Instance variables:
 	private HashMap<String,String> headerMap = null;
 	private Long grandTotalBytesRead;
@@ -182,14 +182,14 @@ public class WarcRecord extends Text implements WarcRecordMap {
 
 		Text txtBuf = new Text();
 		byte[] retContent=null;
-		
+
 		tmpOptionalHeaderKeys.clear();
 		tmpGrandTotalBytesRead = 0L;
 		tmpHeaderMap.clear();
 		// Find our WARC header
 		boolean foundWARCHeader = scanToRecordStart(warcLineReader, txtBuf);
 		txtBuf.clear();
-		
+
 		// No WARC header found?
 		if (!foundWARCHeader) { return null; }
 
@@ -198,9 +198,9 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		// is wbRecordReader the header, because we rely on it below. 
 		// We do not check for the other mandatory header fields:
 		int contentLength = pullHeaderFromStream(warcLineReader, 
-												 txtBuf);
+				txtBuf);
 		txtBuf.clear();
-		
+
 		if (contentLength < 0) {
 			return null;
 		}
@@ -214,7 +214,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 						tmpHeaderMap.get(WARC_RECORD_ID) + 
 						" of supposed content length " +
 						tmpHeaderMap.get(CONTENT_LENGTH) +
-				". Reason is other than EOF.");
+						". Reason is other than EOF.");
 
 			if (totalRead < contentLength) {
 				// Did we hit EOF wbRecordReader the middle of the WARC record's content?
@@ -222,7 +222,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 						tmpHeaderMap.get(WARC_RECORD_ID) + 
 						" of supposed content length " +
 						tmpHeaderMap.get(CONTENT_LENGTH) +
-				".");
+						".");
 			}
 			tmpGrandTotalBytesRead += totalRead;
 			return retContent;
@@ -290,11 +290,11 @@ public class WarcRecord extends Text implements WarcRecordMap {
 					headerAttrName  = (thisHeaderPieceParts[0]).trim().toLowerCase();
 					headerAttrValue =  thisHeaderPieceParts[1].trim();
 					tmpHeaderMap.put(headerAttrName, headerAttrValue);
-					
+
 					// Accumulate a list of optional header keys:
 					if (mandatoryHeaderFieldsLookup.get(headerAttrName) == null)
 						tmpOptionalHeaderKeys.add(headerAttrName);
-					
+
 					if (headerAttrName.startsWith(CONTENT_LENGTH)) {
 						try {
 							contentLength=Integer.parseInt(headerAttrValue.trim());
@@ -316,15 +316,18 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	 * @throws IOException
 	 */
 	private static boolean scanToRecordStart(LineAndChunkReader warcLineReader,
-											 Text txtBuf) throws IOException {
+			Text txtBuf) throws IOException {
 		String line;
 		boolean foundMark = false;
 		int bytesRead;
 		while ((!foundMark) && ((bytesRead = warcLineReader.readLine(txtBuf))!=0)) {
 			line = txtBuf.toString();
 			tmpGrandTotalBytesRead += bytesRead;
-			if (line.startsWith(WARC_VERSION)) {
-				foundMark=true;
+			for (String warcVersion : WARC_VERSION) {
+				if (line.startsWith(warcVersion)) {
+					foundMark=true;
+					break;
+				}
 			}
 			txtBuf.clear();
 		}
@@ -339,7 +342,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	 */
 	@SuppressWarnings("unchecked")
 	public static WarcRecord readNextWarcRecord(LineAndChunkReader warcInLineReader, boolean readContent) throws IOException {
-		
+
 		byte[] recordContent=readNextRecord(warcInLineReader, readContent);
 		if (recordContent==null) { 
 			return null; 
@@ -350,7 +353,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		retRecord.grandTotalBytesRead = tmpGrandTotalBytesRead;
 		retRecord.optionalHeaderKeysThisRecord = (HashSet<String>) tmpOptionalHeaderKeys.clone();
 		retRecord.setRecordContent(recordContent);
-		
+
 		return retRecord;
 	}
 
@@ -390,13 +393,13 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	public String toString() {
 		return toString(DONT_INCLUDE_CONTENT);
 	}
-	
+
 	public String toString(boolean shouldIncludeContent) {
 		StringBuffer retBuffer=new StringBuffer();
 		String headerVal;
 		for (String headerFldNm : headerMap.keySet()) {
 			retBuffer.append(ISO_WARC_HEADER_FIELD_NAMES.get(headerFldNm) + ":" + 
-							 ((headerVal = headerMap.get(headerFldNm)) == null ? "" : headerVal) + "\n");
+					((headerVal = headerMap.get(headerFldNm)) == null ? "" : headerVal) + "\n");
 		}
 		if (shouldIncludeContent) {
 			retBuffer.append(NEWLINE);
@@ -406,39 +409,39 @@ public class WarcRecord extends Text implements WarcRecordMap {
 			retBuffer.append("[Record content suppressed. Use toString(INCLUDE_CONTENT) to see the content string.\n");
 		return retBuffer.toString();
 	}
-	
+
 	//  -----------------------------------  MAP<String,String> Methods -----------------------
 
-		public int size() {
+	public int size() {
 		// Plus 1 is for the pseudo 'content' byte array
 		// that's not really part of the hash:
 		return headerMap.size() + 1;
 	}
 
-		public boolean isEmpty() {
+	public boolean isEmpty() {
 		return headerMap.isEmpty() && (warcContent.length == 0); 
 	}
 
-		public boolean containsKey(Object key) {
+	public boolean containsKey(Object key) {
 		String lowerCaseKey = ((String) key).toLowerCase();
 		return (headerMap.containsKey(lowerCaseKey) || lowerCaseKey.equals(CONTENT));
 	}
 
-		public boolean containsValue(Object value) {
+	public boolean containsValue(Object value) {
 		if (headerMap.containsValue(value))
 			return true;
 		String content = getContentUTF8();
 		return content.contains((String) value);
 	}
 
-		public String get(Object key) {
+	public String get(Object key) {
 		if (((String) key).equalsIgnoreCase(CONTENT)) {
 			return getContentUTF8();
 		}
 		return headerMap.get(((String)key).toLowerCase());
 	}
 
-		public String put(String key, String value) {
+	public String put(String key, String value) {
 		String prevValue;
 		String lowerCaseKey = key.toLowerCase();
 		if (lowerCaseKey.equals(CONTENT)) {
@@ -451,7 +454,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		return prevValue;
 	}
 
-		public String remove(Object key) {
+	public String remove(Object key) {
 		String prevValue;
 		String lowerCaseKey = ((String)key).toLowerCase();
 		if (lowerCaseKey.equalsIgnoreCase(CONTENT)) {
@@ -462,22 +465,22 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		return headerMap.remove(lowerCaseKey);
 	}
 
-		public void putAll(Map<? extends String, ? extends String> m) {
+	public void putAll(Map<? extends String, ? extends String> m) {
 		for (String key : m.keySet()) {
 			put(key, m.get(key));
 		}
 	}
 
-		public Set<String> keySet() {
+	public Set<String> keySet() {
 		Set<String> res = headerMap.keySet();
 		res.add(CONTENT);
 		return res;
 	}
-	
+
 	public Set<String> keySetHeader() {
 		return headerMap.keySet();
 	}
-	
+
 	public String[] mandatoryKeysHeader() {
 		return mandatoryHeaderFields;
 	}
@@ -485,7 +488,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	public Set<String> optionalKeysHeader() {
 		return optionalHeaderKeysThisRecord;
 	}
-	
+
 	public String[] mandatoryValuesHeader() {
 		String[] res = new String[mandatoryHeaderFields.length];
 		for (int i=0; i<mandatoryHeaderFields.length; i++) {
@@ -493,22 +496,22 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		}
 		return res;
 	}
-	
-		public Collection<String> values() {
+
+	public Collection<String> values() {
 		Collection<String> res = headerMap.values();
 		res.add(getContentUTF8());
 		return res;
 	}
-	
-		public Collection<String> valuesHeader() {
+
+	public Collection<String> valuesHeader() {
 		return headerMap.values();
 	}
-	
+
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-		public Set entrySet() {
+	public Set entrySet() {
 		return entrySet(true);
 	}
-	
+
 	public Set<Entry<String,String>> entrySet(boolean readContent) {
 		//Set<Entry> res = new HashSet<Entry>();
 		HashSet<Entry<String,String>> res = new HashSet<Entry<String,String>>();
@@ -518,20 +521,20 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		if (readContent) {
 			res.add(new Entry<String,String>(CONTENT, getContentUTF8()));
 		}
-			
+
 		return res;
 	}
-	
+
 	private class Entry<K,V> implements Map.Entry<K,V> {
 
 		K key;
 		V value;
-		
+
 		public Entry(K theKey, V theValue) {
 			key = theKey;
 			value = theValue;
 		}
-		
+
 		public K getKey() {
 			return key;
 		}
@@ -545,18 +548,18 @@ public class WarcRecord extends Text implements WarcRecordMap {
 			value = theValue;
 			return oldVal;
 		}
-		
+
 		@SuppressWarnings("unchecked")
 		public boolean equals (Object obj) {
 			if (!obj.getClass().equals(this.getClass()))
 				return false;
 			return (((Entry<K,V>)obj).getKey().equals(key) && ((Entry<K,V>)obj).getValue().equals(value));	
 		}
-		
+
 		public int hashCode() {
 			return ((key==null   ? 0 : key.hashCode()) ^  (value == null ? 0 : value.hashCode()));
 		}
-		
+
 		public String toString() {
 			return new String(key + "=" + value);
 		}
