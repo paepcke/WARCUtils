@@ -3,6 +3,7 @@
  */
 package edu.stanford.warcutils.warcfilter;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import edu.stanford.warcutils.warcreader.WarcRecord;
@@ -15,6 +16,10 @@ import edu.stanford.warcutils.warcreader.WarcRecord;
  * satisfies a given regular expression. The class is intended
  * to be instantiated once, and the resulting instance used 
  * many times as a stream of WARC records is examined.
+ * 
+ * Currently only values for a single key can be tested. The
+ * absence of the key in a given WARC record is considered a
+ * non-match (rather than an error).
  * 
  * WARC record keys are:
  *     warc-type
@@ -37,33 +42,43 @@ import edu.stanford.warcutils.warcreader.WarcRecord;
  *     warc-segment-number
  *     warc-segment-total-length
  * 
- * Only content-length, warc-date, and warc-type are mandatory.
+ * Only content-length, warc-date, and warc-type are mandatory for WARC records.
  */
 public class WarcFilter {
 	
 	private Pattern regexPattern = null;
 	private String warcFieldKey = null;
 
-	public WarcFilter(Pattern warcKeyRegexPattern, String warcRecKey) {
-		regexPattern = warcKeyRegexPattern;
+	public WarcFilter(String warcValRegexPatternStr, String warcRecKey) {
+		regexPattern = Pattern.compile(warcValRegexPatternStr);
 		warcFieldKey = warcRecKey;
 	}
 	
+	/**
+	 * Given a WARC record, determine whether the filter's key
+	 * is associated with a value that matches this filter's regular
+	 * expression.
+	 * @param warcRec record to test
+	 * @return whether the record's value for the this filter's key matches this filter's regular expression
+	 */
 	public boolean matches(WarcRecord warcRec) {
 		String val = warcRec.get(warcFieldKey);
-		return val == null;
-	}
-	
-	public String contentsIf(WarcRecord warcRec) {
-		String val = warcRec.get(warcFieldKey);
+		if (val == null)
+			return false;
+		Matcher m = regexPattern.matcher(val);
+		return m.matches();
 	}
 	
 	/**
-	 * @param args
+	 * Returns the given WARC record's content without any metadata,
+	 * if the record matches the filter. Else returns null.
+	 * @param warcRec
+	 * @return
 	 */
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+	public String contentsIf(WarcRecord warcRec) {
+		if (matches(warcRec))
+			// Return content:
+			return warcRec.get("content");
+		return null;
 	}
-
 }

@@ -4,10 +4,13 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Formatter;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.zip.GZIPInputStream;
+
+import edu.stanford.javautils.CallBack;
 
 /**
  * @author paepcke
@@ -43,10 +46,13 @@ public class WarcRecordReader {
 	private long keyWarcStreamPos = (long) 0;
 	private WarcRecord valueWarcRecord = null;
 	private FileInputStream fileIn = null;
+	private String currentWarcFilePathName = null;
 	private Logger logger = null;
 	private StringBuilder errMsgs = null;
 	private Formatter strFormatter = new Formatter(errMsgs);
 	private LinkedList<File> allFiles = null;
+	
+	private CallBack callback = null;
 
 	/**
 	 * Provide a single WARC file. 
@@ -54,13 +60,14 @@ public class WarcRecordReader {
 	 */
 	public WarcRecordReader(File warcPath) {
 
+		allFiles = new LinkedList<File>();
 		if (warcPath.isDirectory()) {
 			File[] dirFilePaths = warcPath.listFiles();
-			allFiles = new LinkedList<File>();
 			for (File filePath : dirFilePaths) {
 				allFiles.add(filePath);
 			}
-			initForOneFile(allFiles.remove());
+			// Init for the first file in the queue:
+			initForOneFile(allFiles.removeLast());
 		} else {
 			initForOneFile(warcPath);
 		}
@@ -75,7 +82,7 @@ public class WarcRecordReader {
 		for (String fileName : warcPaths) {
 			allFiles.add(new File(fileName));
 		}
-		initForOneFile(allFiles.remove());
+		initForOneFile(allFiles.removeLast());
 	}
 
 	/**
@@ -92,6 +99,9 @@ public class WarcRecordReader {
 	/**
 	 * Variant of nextKeyValue() that enables caller to specify whether only
 	 * the WARC record metadata is to be read, or the record content as well.
+	 * If setCallback() was called ahead of time, then that callback is invoked
+	 * whenever a file has been read completely. The filename is passed to the callback. 
+	 * 
 	 * @param readContents determines whether WARC record content is read in addition to metadata, or not.
 	 * @return true if a pair was available, false if end of file(s) occurs.
 	 * @throws IOException when read error other than end of file(s) occurs.
@@ -104,9 +114,19 @@ public class WarcRecordReader {
 			valueWarcRecord = WarcRecord.readNextWarcRecord(warcLineReader, readContents);
 			if (valueWarcRecord == null) {
 				// File is done:
+				if (callback != null)
+					try {
+						callback.invoke(currentWarcFilePathName);
+					} catch (InvocationTargetException e1) {
+						throw new IOException("Requested file change callback to unknown method.");
+					} catch (IllegalAccessException e1) {
+						throw new IOException("Requested file change callback to unknown method.");
+					} catch (NoSuchMethodException e1) {
+						throw new IOException("Requested file change callback to unknown method.");
+					}
 				// Another WARC file in queue?
 				try {
-					initForOneFile(allFiles.remove());
+					initForOneFile(allFiles.removeLast());
 				} catch (NoSuchElementException e) {
 					// No, processed all files.
 					keyWarcStreamPos = 0;
@@ -122,12 +142,31 @@ public class WarcRecordReader {
 		return true;
 	}
 
+	public WarcRecord getCurrentRecord() {
+		return valueWarcRecord;
+	}
+	
 	public long getCurrentKey() {
 		return keyWarcStreamPos;
 	}
 
 	public WarcRecord getCurrentValue() {
 		return valueWarcRecord;
+	}
+	
+	public String getCurrentFilePath() {
+		return currentWarcFilePathName;
+	}
+	
+	/**
+	 * Use to install a callback that is called whenever a file has been
+	 * process to its end.
+	 * @param callbackClassObj the class object that holds the method to be called.
+	 * @param callbackMethodStr the name of the method to call. We expect that method to take one argument: the name of the
+	 * 			processed file.
+	 */
+	public void setCallback(Object callbackObj, String callbackMethodStr) {
+		callback = new CallBack(callbackObj, callbackMethodStr);
 	}
 
 	/**
@@ -164,6 +203,7 @@ public class WarcRecordReader {
 				return;
 			}
 		}
+		currentWarcFilePathName = warcFilePath.getAbsolutePath();
 		warcLineReader = new LineAndChunkReader(warcInStream);
 		//start = 0;
 		pos = 0;

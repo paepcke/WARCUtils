@@ -1,16 +1,16 @@
 package edu.stanford.warcutils.warcreader;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
-import org.junit.Before;
-import org.junit.Test;
-
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
-import edu.stanford.warcutils.warcreader.WarcRecordReader;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class WarcRecordReaderTest {
 
@@ -22,6 +22,8 @@ public class WarcRecordReaderTest {
 	WarcRecordReader warcReader1_0;
 	WarcRecordReader warcReader0_18GZipped;
 	WarcRecordReader warcReaderDir;
+
+	ArrayList<String> fileArray = null;
 	
 	@Before
 	public void setUp() throws Exception {
@@ -66,9 +68,13 @@ public class WarcRecordReaderTest {
 			System.out.println("Directory " + testWarcDir + " does not exist.");
 		}
 		warcReaderDir = new WarcRecordReader(testWarcDir);
+		
+		//---------- Callacks after each file -------------
+		fileArray = new ArrayList<String>();
 	}
 
 	@Test
+	@Ignore
 	public void testWarc0_18() throws IOException {
 		assertTrue(warcReader0_18.nextKeyValue());
 		long key = warcReader0_18.getCurrentKey();
@@ -93,6 +99,7 @@ public class WarcRecordReaderTest {
 	}
 
 	@Test
+	@Ignore
 	public void testWarc0_18GZipped() throws IOException {
 		assertTrue(warcReader0_18GZipped.nextKeyValue());
 		long key = warcReader0_18GZipped.getCurrentKey();
@@ -117,6 +124,7 @@ public class WarcRecordReaderTest {
 	}
 	
 	@Test
+	@Ignore
 	public void testWarc1_0() throws IOException {
 		assertTrue(warcReader1_0.nextKeyValue());
 		long key = warcReader1_0.getCurrentKey();
@@ -131,12 +139,35 @@ public class WarcRecordReaderTest {
 		String content = record.get(WarcRecord.CONTENT);
 		assertEquals(lenFirstContentRecord, content.length());
 	}
+
 	@Test
+	@Ignore
 	public void testWarcDir() throws IOException {
 		// Test whether all 51 entries are present (45 in the clear file, 6 in the .gz file, and 0 in the empty file:
 		for (int i=0; i<51; i++) {
 			assertTrue(warcReaderDir.nextKeyValue());
 		}
 		assertFalse(warcReaderDir.nextKeyValue());
+	}
+	
+	public void callbackMethod(String fileName) {
+		fileArray.add(fileName);
+	}
+	
+	@Test
+	public void testCallback() throws IOException {
+		assertTrue(fileArray.size() == 0);
+		warcReaderDir.setCallback(this, "callbackMethod");
+		// Run through all 50 entries. When i=51, no record
+		// will be found:
+		for (int i=0; i<51; i++) {
+			assertTrue(warcReaderDir.nextKeyValue());
+		}
+		assertFalse(warcReaderDir.nextKeyValue());
+		
+		assertEquals(fileArray.size(), 3);
+		assertTrue(fileArray.contains(new File(testWarcDir, "tinyWarc0_18.warc.gz").getAbsolutePath())); 
+		assertTrue(fileArray.contains(new File(testWarcDir, "tinyWarc1_0.warc").getAbsolutePath())); 
+		assertTrue(fileArray.contains(new File(testWarcDir, "tinyWarc1_1.warc").getAbsolutePath())); 
 	}
 }
