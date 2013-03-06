@@ -32,13 +32,13 @@ package edu.stanford.warcutils.warcreader;
  * POSSIBILITY OF SUCH DAMAGE. 
  * 
  * @author mhoy@cs.cmu.edu (Mark J. Hoy)
- * 
- * Jan 17, 2011; Andreas Paepcke: added inheritance from Text
+ *
+ *  * Jan 17, 2011; Andreas Paepcke: added inheritance from Text
  * Jan 19, 2011; Andreas Paepcke: modified to fit wbRecordReader Hadoop/Pig workflow. 
  *                                Replaced separate header API with a 
  *                                Map<String,String> implementation that
  *                                includes 'content' as one of its fields.
- * 
+ * Mar 5,  2013; Andreas Paepcke: added saving of WARC version line
  */
 
 import java.io.EOFException;
@@ -110,6 +110,8 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		WARC_DATE,
 		WARC_TYPE
 	};
+	
+	private static String tmpVersionLine = null;
 
 	// Provide a constructor for each of the header datatypes:
 	private static Constructor<String> strConstructor = null;
@@ -163,6 +165,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	private Long grandTotalBytesRead;
 	private byte[] warcContent=null;
 	private HashSet<String> optionalHeaderKeysThisRecord;
+	private String versionLine = null;
 
 	/**
 	 * The actual heavy lifting of reading wbRecordReader the next WARC record. The
@@ -185,13 +188,15 @@ public class WarcRecord extends Text implements WarcRecordMap {
 
 		tmpOptionalHeaderKeys.clear();
 		tmpGrandTotalBytesRead = 0L;
+		tmpVersionLine = null;
 		tmpHeaderMap.clear();
-		// Find our WARC header
-		boolean foundWARCHeader = scanToRecordStart(warcLineReader, txtBuf);
+		// Find our WARC header, getting the WARC version line in
+		// return, or null, if failure:
+		tmpVersionLine = scanToRecordStart(warcLineReader, txtBuf);
 		txtBuf.clear();
 
 		// No WARC header found?
-		if (!foundWARCHeader) { return null; }
+		if (tmpVersionLine == null) { return null; }
 
 		// Read the header (up to the first empty line).
 		// Make sure we get the (mandatory) content length 
@@ -214,7 +219,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 						tmpHeaderMap.get(WARC_RECORD_ID) + 
 						" of supposed content length " +
 						tmpHeaderMap.get(CONTENT_LENGTH) +
-						". Reason is other than EOF.");
+						". Maybe incorrect length spec in WARC header?");
 
 			if (totalRead < contentLength) {
 				// Did we hit EOF wbRecordReader the middle of the WARC record's content?
@@ -315,9 +320,9 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	 * @return success true/false
 	 * @throws IOException
 	 */
-	private static boolean scanToRecordStart(LineAndChunkReader warcLineReader,
+	private static String scanToRecordStart(LineAndChunkReader warcLineReader,
 			Text txtBuf) throws IOException {
-		String line;
+		String line = null;
 		boolean foundMark = false;
 		int bytesRead;
 		while ((!foundMark) && ((bytesRead = warcLineReader.readLine(txtBuf))!=0)) {
@@ -331,7 +336,8 @@ public class WarcRecord extends Text implements WarcRecordMap {
 			}
 			txtBuf.clear();
 		}
-		return foundMark;
+		// Return the WARC version line:
+		return line;
 	}
 
 	/**
@@ -343,12 +349,15 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	@SuppressWarnings("unchecked")
 	public static WarcRecord readNextWarcRecord(LineAndChunkReader warcInLineReader, boolean readContent) throws IOException {
 
+		// The following call also sets the static tmpVersionLine to 
+		// the warc record's version line (e.g. "WARC/1.0"):
 		byte[] recordContent=readNextRecord(warcInLineReader, readContent);
 		if (recordContent==null) { 
 			return null; 
 		}
 
 		WarcRecord retRecord=new WarcRecord();
+		retRecord.versionLine = tmpVersionLine;
 		retRecord.headerMap = (HashMap<String, String>) tmpHeaderMap.clone();
 		retRecord.grandTotalBytesRead = tmpGrandTotalBytesRead;
 		retRecord.optionalHeaderKeysThisRecord = (HashSet<String>) tmpOptionalHeaderKeys.clone();
@@ -396,6 +405,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 
 	public String toString(boolean shouldIncludeContent) {
 		StringBuffer retBuffer=new StringBuffer();
+		retBuffer.append(versionLine + "\n");
 		String headerVal;
 		for (String headerFldNm : headerMap.keySet()) {
 			retBuffer.append(ISO_WARC_HEADER_FIELD_NAMES.get(headerFldNm) + ":" + 
@@ -406,7 +416,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 			retBuffer.append(getContentUTF8());
 		}
 		else
-			retBuffer.append("[Record content suppressed. Use toString(INCLUDE_CONTENT) to see the content string.\n");
+			retBuffer.append("[Record content suppressed. Use toString(INCLUDE_CONTENT) to see the content string.]\n");
 		return retBuffer.toString();
 	}
 
