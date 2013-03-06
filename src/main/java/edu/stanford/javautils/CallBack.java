@@ -9,7 +9,7 @@ import java.lang.reflect.Method;
  * 
  * Approximation to callbacks in Java.
  *
- * Use like this: 
+ * Use like this with a nested class that holds the callback methods: 
  * 
  * public class CallBackTest {
 	    @Test
@@ -30,6 +30,19 @@ import java.lang.reflect.Method;
 	        }
 	    }
 	}
+	
+ * Or like this, with the callback method being part of the class itself:
+ * 
+ * public MyClass {
+ 
+ 	public MyClass {
+		CallBack callBack = new CallBack(this, "myCallbackMethodSameClass");
+		callBack.invoke("Same class");
+ 
+ 	public void myCallbackMethodSameClass(String theArg) {
+		System.out.println("Called.");
+	}
+
  * 
  */
 public class CallBack {
@@ -46,7 +59,8 @@ public class CallBack {
         return method.invoke(scope, parameters);
     }
 
-    private Class[] getParameterClasses(Object... parameters) {
+    @SuppressWarnings("rawtypes")
+	private Class[] getParameterClasses(Object... parameters) {
         Class[] classes = new Class[parameters.length];
         for (int i=0; i < classes.length; i++) {
             classes[i] = parameters[i].getClass();

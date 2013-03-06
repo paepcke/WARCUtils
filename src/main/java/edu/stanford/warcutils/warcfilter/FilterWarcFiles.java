@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.Collection;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.io.FileUtils;
@@ -22,26 +23,90 @@ import edu.stanford.warcutils.warcreader.WarcRecordReader;
  */
 public class FilterWarcFiles {
 	
+	enum FilterSense {
+		DISCARD_IF_MATCHES,
+		DISCARD_IF_NOT_MATCHES
+	}
+	
+	enum WarcHeaderRetention {
+		RETAIN_WARC_HEADERS,
+		DISCARD_WARC_HEADERS
+	}
+	
 	WarcRecordReader recReader = null;
 	WarcFilter filter = null;
 	String outPrefix = null;
 	String currInFileName = null;
 	String currOutFileName = null;
 	File outFile = null;
+	File outDir  = null;
 	BufferedWriter gzipWriter = null;
+	WarcHeaderRetention keepWarcHeaders = null;
+	FilterSense filterSense = null;
 	
 	boolean DO_APPEND = true;
 	
-	public FilterWarcFiles(String[] pathNames, String warcKey, String regexPattern) throws IOException {
-		this(pathNames, warcKey, regexPattern, "filtered");
+	/**
+	 * Create file filter where output paths go to
+	 * same place as input files, the file names are
+	 * prefixed with "filtered_", and the WARC headers
+	 * are retained.
+	 * placed, and any prefix that is prepended to the output file names.
+	 * @param pathFiles
+	 * @param warcKey
+	 * @param regexPattern
+	 * @throws IOException
+	 */
+	public FilterWarcFiles(Collection<File> pathFiles, 
+						   String warcKey, 
+						   String regexPattern
+						   ) throws IOException {
+		// Use defaults; the null is for the output directory.
+		// This value will cause outputs to go to same directory
+		// as inputs:
+		this(pathFiles, warcKey, regexPattern, FilterSense.DISCARD_IF_NOT_MATCHES, null, "filtered_", WarcHeaderRetention.RETAIN_WARC_HEADERS);
 	}
 	
-	public FilterWarcFiles(String[] pathNames, String warcKey, String regexPattern, String theOutPrefix) throws IOException {
-		recReader = new WarcRecordReader(pathNames);
+	
+	/**
+	 * Create file filter with choice of where output files are
+	 * placed, and any prefix that is prepended to the output file names.
+	 * @param pathNames
+	 * @param warcKey
+	 * @param regexPattern
+	 * @param filterSense 
+	 * @param theOutDirPath
+	 * @param theOutPrefix
+	 * @param doRetainWarcHeaders
+	 * @throws IOException
+	 */
+	public FilterWarcFiles(Collection<File> pathFiles, 
+						   String warcKey, 
+						   String regexPattern,
+						   FilterSense theFilterSense,
+						   String theOutDirPath,
+						   String theOutPrefix,
+						   WarcHeaderRetention headerRetention) throws IOException {
+		recReader = new WarcRecordReader(pathFiles);
 		currInFileName = recReader.getCurrentFilePath();
 		filter = new WarcFilter(regexPattern, warcKey);
 		outPrefix = theOutPrefix;
+		keepWarcHeaders = headerRetention;
+		filterSense = theFilterSense;
+		if (theOutDirPath != null)
+			outDir = new File(theOutDirPath);
 		processFiles();
+	}
+	
+	/**
+	 * This constructor ONLY FOR UNIT TESTING !!!
+	 * @param theOutDirPath
+	 * @param theOutPrefix
+	 */
+	public FilterWarcFiles(String theOutDirPath, String theOutPrefix) {
+		outPrefix = theOutPrefix;
+		if (theOutDirPath != null)
+				outDir = new File(theOutDirPath);
 	}
 	
 	public void processFiles() throws IOException {
@@ -58,7 +123,19 @@ public class FilterWarcFiles {
 				filesLeft = false;
 				continue;
 			}
-			if ((content = filter.contentsIf(recReader.getCurrentValue())) == null)
+			// Grab record with or without the WARC header, depending
+			// on the regex match:
+			if (keepWarcHeaders == WarcHeaderRetention.RETAIN_WARC_HEADERS)
+				if (filterSense == FilterSense.DISCARD_IF_MATCHES)
+					content = filter.allIfNot(recReader.getCurrentValue());
+				else
+					content = filter.allIf(recReader.getCurrentValue());
+			else
+				if (filterSense == FilterSense.DISCARD_IF_MATCHES)
+					content = filter.contentsIfNot(recReader.getCurrentValue());
+				else
+					content = filter.contentsIf(recReader.getCurrentValue());
+			if (content == null)
 				// Record not wanted: matches the filter regexp:
 				continue;
 			if (gzipWriter != null)
@@ -70,10 +147,19 @@ public class FilterWarcFiles {
 	
 	public String constructOutFileName(String fullFilePath) {
 		String path     = FilenameUtils.getPath(fullFilePath);
-		String rootSpec = FilenameUtils.getPrefix(fullFilePath);
 		String fileName = FilenameUtils.getName(fullFilePath);
-		String res = rootSpec + path + outPrefix + fileName;
-		return res;
+		String res = "";
+		// If no output dir was specified, out files go 
+		// to directory where infiles are:
+		if (outDir == null) {
+			// Root spec is for Windows: C:, etc:
+			String rootSpec = FilenameUtils.getPrefix(fullFilePath);
+			File newFileName = FileUtils.getFile(rootSpec,path, outPrefix + fileName);
+			res = newFileName.getAbsolutePath();
+			return res;
+		}
+		File newFileName = FileUtils.getFile(outDir, outPrefix + fileName);
+		return newFileName.getAbsolutePath();
 	}
 	
 	public boolean isGzipped(String fileName) {

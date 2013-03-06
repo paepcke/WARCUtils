@@ -15,7 +15,11 @@ import edu.stanford.warcutils.warcreader.WarcRecord;
  * instance contains a given key, and the corresponding value
  * satisfies a given regular expression. The class is intended
  * to be instantiated once, and the resulting instance used 
- * many times as a stream of WARC records is examined.
+ * many times as a stream of WARC records is examined. Main
+ * methods at contentsIf(), contentsIfNot(), allIf(), and allIfNot().
+ * The contentsXXX() methods return only the content parts of
+ * the record, without the WARC header, while the allXXX() methods'
+ * returns include the WARC headers.
  * 
  * Currently only values for a single key can be tested. The
  * absence of the key in a given WARC record is considered a
@@ -81,4 +85,47 @@ public class WarcFilter {
 			return warcRec.get("content");
 		return null;
 	}
+	
+	/**
+	 * Returns the given WARC record's content without any metadata,
+	 * if the record does NOT match the filter. Else returns null. This
+	 * is a convenience method so callers do not have to deal with 
+	 * negative lookahead regex patterns.
+	 * @param warcRec
+	 * @return
+	 */
+	public String contentsIfNot(WarcRecord warcRec) {
+		if (!matches(warcRec))
+			// Return content:
+			return warcRec.get("content");
+		return null;
+	}
+
+	
+	/**
+	 * Returns the given WARC record's content, including the WARC header
+	 * metadata, if the filter matches. Else returns null.
+	 * @param warcRec
+	 * @return
+	 */
+	public String allIf(WarcRecord warcRec) {
+		if (matches(warcRec))
+			return warcRec.toString(WarcRecord.INCLUDE_CONTENT);
+		return null;
+	}
+
+	/**
+	 * Returns the given WARC record's content, including the WARC header
+	 * metadata, if the filter does NOT match. Else returns null. This 
+	 * is a convenience method so callers do not have to deal with 
+	 * negative lookahead regex patterns.
+	 * @param warcRec
+	 * @return
+	 */
+	public String allIfNot(WarcRecord warcRec) {
+		if (!matches(warcRec))
+			return warcRec.toString(WarcRecord.INCLUDE_CONTENT);
+		return null;
+	}
+
 }

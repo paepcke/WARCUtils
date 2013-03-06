@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
 import java.util.Formatter;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
@@ -30,7 +31,7 @@ import edu.stanford.javautils.CallBack;
  * 
  * Note that the sequence of files when processing a directory
  * is not defined. However, the constructor taking an array of
- * paths to WARC file is guaranteed to be processed in the given
+ * paths to WARC files is guaranteed to be processed in the given
  * order.
  * 
  * There is currently no ability for random access.
@@ -77,7 +78,26 @@ public class WarcRecordReader {
 	 * Array of paths to WARC files 
 	 * @param warcPaths: Array of WARC file paths, clear of gzipped.
 	 */
+	public WarcRecordReader(Collection<File> warcPaths) {
+		String[] pathStrs = new String[warcPaths.size()];
+		int i = 0;
+		for (File inFile : warcPaths) {
+			pathStrs[i] = inFile.getAbsolutePath();
+			i += 1;
+		}
+		initLocals(pathStrs);
+	}
+
+	
+	/**
+	 * Array of paths to WARC files 
+	 * @param warcPaths: Array of WARC file paths, clear of gzipped.
+	 */
 	public WarcRecordReader(String[] warcPaths) {
+		initLocals(warcPaths);
+	}
+	
+	private void initLocals(String[] warcPaths) {
 		allFiles = new LinkedList<File>();
 		for (String fileName : warcPaths) {
 			allFiles.add(new File(fileName));
