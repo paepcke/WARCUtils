@@ -48,6 +48,7 @@ import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -156,12 +157,12 @@ public class WarcRecord extends Text implements WarcRecordMap {
 	public static String[] WARC_VERSION_LINE = {"WARC/0.18\n", "WARC/1.0\n"};
 	private static String NEWLINE="\n";
 
-	private static HashMap<String,String> tmpHeaderMap = new HashMap<String, String>();
+	private static LinkedHashMap<String,String> tmpHeaderMap = new LinkedHashMap<String, String>();
 	private static Long tmpGrandTotalBytesRead = 0L;
 	private static HashSet<String> tmpOptionalHeaderKeys = new HashSet<String>();
 
 	// Instance variables:
-	private HashMap<String,String> headerMap = null;
+	private LinkedHashMap<String,String> headerMap = null;
 	private Long grandTotalBytesRead;
 	private byte[] warcContent=null;
 	private HashSet<String> optionalHeaderKeysThisRecord;
@@ -358,7 +359,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 
 		WarcRecord retRecord=new WarcRecord();
 		retRecord.versionLine = tmpVersionLine;
-		retRecord.headerMap = (HashMap<String, String>) tmpHeaderMap.clone();
+		retRecord.headerMap = (LinkedHashMap<String, String>) tmpHeaderMap.clone();
 		retRecord.grandTotalBytesRead = tmpGrandTotalBytesRead;
 		retRecord.optionalHeaderKeysThisRecord = (HashSet<String>) tmpOptionalHeaderKeys.clone();
 		retRecord.setRecordContent(recordContent);
