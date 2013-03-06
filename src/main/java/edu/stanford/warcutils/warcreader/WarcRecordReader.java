@@ -134,24 +134,25 @@ public class WarcRecordReader {
 			valueWarcRecord = WarcRecord.readNextWarcRecord(warcLineReader, readContents);
 			if (valueWarcRecord == null) {
 				// File is done:
-				if (callback != null)
-					try {
-						callback.invoke(currentWarcFilePathName);
-					} catch (InvocationTargetException e1) {
-						throw new IOException("Requested file change callback to unknown method.");
-					} catch (IllegalAccessException e1) {
-						throw new IOException("Requested file change callback to unknown method.");
-					} catch (NoSuchMethodException e1) {
-						throw new IOException("Requested file change callback to unknown method.");
-					}
+				String inFileJustFinished = currentWarcFilePathName;
 				// Another WARC file in queue?
 				try {
 					initForOneFile(allFiles.removeLast());
+					if (callback != null)
+						callback.invoke(inFileJustFinished, currentWarcFilePathName);
 				} catch (NoSuchElementException e) {
 					// No, processed all files.
+					try {
+						callback.invoke(inFileJustFinished, "");
+					} catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e1) {
+						throw new IOException("Requested file change callback to unknown method.");
+					}
 					keyWarcStreamPos = 0;
 					return false;
-				}
+				} 
+				catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e1) {
+					throw new IOException("Requested file change callback to unknown method.");
+				}				
 			}
 		}
 

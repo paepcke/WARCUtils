@@ -409,7 +409,7 @@ public class WarcRecord extends Text implements WarcRecordMap {
 		retBuffer.append(versionLine + "\n");
 		String headerVal;
 		for (String headerFldNm : headerMap.keySet()) {
-			retBuffer.append(ISO_WARC_HEADER_FIELD_NAMES.get(headerFldNm) + ":" + 
+			retBuffer.append(ISO_WARC_HEADER_FIELD_NAMES.get(headerFldNm) + ": " + 
 					((headerVal = headerMap.get(headerFldNm)) == null ? "" : headerVal) + "\n");
 		}
 		if (shouldIncludeContent) {

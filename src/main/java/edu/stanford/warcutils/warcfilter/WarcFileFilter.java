@@ -21,7 +21,7 @@ import edu.stanford.warcutils.warcreader.WarcRecordReader;
  * @author paepcke
  *
  */
-public class FilterWarcFiles {
+public class WarcFileFilter {
 	
 	enum FilterSense {
 		DISCARD_IF_MATCHES,
@@ -57,7 +57,7 @@ public class FilterWarcFiles {
 	 * @param regexPattern
 	 * @throws IOException
 	 */
-	public FilterWarcFiles(Collection<File> pathFiles, 
+	public WarcFileFilter(Collection<File> pathFiles, 
 						   String warcKey, 
 						   String regexPattern
 						   ) throws IOException {
@@ -80,7 +80,7 @@ public class FilterWarcFiles {
 	 * @param doRetainWarcHeaders
 	 * @throws IOException
 	 */
-	public FilterWarcFiles(Collection<File> pathFiles, 
+	public WarcFileFilter(Collection<File> pathFiles, 
 						   String warcKey, 
 						   String regexPattern,
 						   FilterSense theFilterSense,
@@ -88,6 +88,11 @@ public class FilterWarcFiles {
 						   String theOutPrefix,
 						   WarcHeaderRetention headerRetention) throws IOException {
 		recReader = new WarcRecordReader(pathFiles);
+		// We need to close our output files, and start
+		// a new output files whenever the reader is done
+		// with one input file, and is moving on to the
+		// next. So install a callback:
+		recReader.setCallback(this, "oneInFileProcessed");
 		currInFileName = recReader.getCurrentFilePath();
 		filter = new WarcFilter(regexPattern, warcKey);
 		outPrefix = theOutPrefix;
@@ -103,7 +108,7 @@ public class FilterWarcFiles {
 	 * @param theOutDirPath
 	 * @param theOutPrefix
 	 */
-	public FilterWarcFiles(String theOutDirPath, String theOutPrefix) {
+	public WarcFileFilter(String theOutDirPath, String theOutPrefix) {
 		outPrefix = theOutPrefix;
 		if (theOutDirPath != null)
 				outDir = new File(theOutDirPath);
@@ -112,11 +117,7 @@ public class FilterWarcFiles {
 	public void processFiles() throws IOException {
 		boolean filesLeft = true;
 		String content = null;
-		currInFileName = recReader.getCurrentFilePath();
-		currOutFileName = constructOutFileName(currInFileName);
-		outFile = new File(currOutFileName);
-		if (isGzipped(currInFileName))
-			prepareGZipOutWriter(currOutFileName);
+		prepareOutputFile();
 		
 		while (filesLeft) {
 			if (! recReader.nextKeyValue()) {
@@ -143,6 +144,44 @@ public class FilterWarcFiles {
 			else
 				FileUtils.write(outFile, content, DO_APPEND); 
 		}
+	}
+
+
+	/**
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
+	private void prepareOutputFile() throws FileNotFoundException, IOException {
+		currInFileName = recReader.getCurrentFilePath();
+		currOutFileName = constructOutFileName(currInFileName);
+		outFile = new File(currOutFileName);
+		if (isGzipped(currInFileName))
+			prepareGZipOutWriter(currOutFileName);
+		else
+			// Ensure that processFiles knows we are not
+			// dealing with gzipped files any more:
+			gzipWriter = null;
+	}
+	
+	/**
+	 * Callback method: One input file was processed by the
+	 * WarcRecordReader. Close the previous out file, if necessary,
+	 * and open the next output file. 
+	 * @param finishedFilePath
+	 * @param nextFilePath input file next to be processed, or empty string, if all inputs have been processed.
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
+	public void oneInFileProcessed(String finishedFilePath, String nextFilePath) throws FileNotFoundException, IOException {
+		if (isGzipped(currOutFileName))
+			try {
+				gzipWriter.close();
+			} catch (IOException e) {
+				// best effort
+			}
+		// Get a new output file to hold the new input file info:
+		if (!nextFilePath.isEmpty())
+			prepareOutputFile();
 	}
 	
 	public String constructOutFileName(String fullFilePath) {
