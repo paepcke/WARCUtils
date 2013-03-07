@@ -56,7 +56,7 @@ public class WarcRecordReader {
 	private CallBack callback = null;
 
 	/**
-	 * Provide a single WARC file. 
+	 * Provide a single WARC file or directory.
 	 * @param warcPath: WARC file, gzipped or clear.
 	 */
 	public WarcRecordReader(File warcPath) {
@@ -143,7 +143,8 @@ public class WarcRecordReader {
 				} catch (NoSuchElementException e) {
 					// No, processed all files.
 					try {
-						callback.invoke(inFileJustFinished, "");
+						if (callback != null)
+							callback.invoke(inFileJustFinished, "");
 					} catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e1) {
 						throw new IOException("Requested file change callback to unknown method.");
 					}

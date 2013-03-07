@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class WarcRecordReaderTest {
@@ -74,7 +73,6 @@ public class WarcRecordReaderTest {
 	}
 
 	@Test
-	@Ignore
 	public void testWarc0_18() throws IOException {
 		assertTrue(warcReader0_18.nextKeyValue());
 		long key = warcReader0_18.getCurrentKey();
@@ -99,7 +97,6 @@ public class WarcRecordReaderTest {
 	}
 
 	@Test
-	@Ignore
 	public void testWarc0_18GZipped() throws IOException {
 		assertTrue(warcReader0_18GZipped.nextKeyValue());
 		long key = warcReader0_18GZipped.getCurrentKey();
@@ -124,7 +121,6 @@ public class WarcRecordReaderTest {
 	}
 	
 	@Test
-	@Ignore
 	public void testWarc1_0() throws IOException {
 		assertTrue(warcReader1_0.nextKeyValue());
 		long key = warcReader1_0.getCurrentKey();
@@ -141,7 +137,6 @@ public class WarcRecordReaderTest {
 	}
 
 	@Test
-	@Ignore
 	public void testWarcDir() throws IOException {
 		// Test whether all 51 entries are present (45 in the clear file, 6 in the .gz file, and 0 in the empty file:
 		for (int i=0; i<51; i++) {
@@ -150,8 +145,8 @@ public class WarcRecordReaderTest {
 		assertFalse(warcReaderDir.nextKeyValue());
 	}
 	
-	public void callbackMethod(String fileName) {
-		fileArray.add(fileName);
+	public void callbackMethod(String fileNameDone, String fileNameNext) {
+		fileArray.add(fileNameDone);
 	}
 	
 	@Test

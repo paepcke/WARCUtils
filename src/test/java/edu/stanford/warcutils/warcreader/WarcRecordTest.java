@@ -42,7 +42,7 @@ public class WarcRecordTest {
 	@Test
 	public void testToString() {
 		String str = record.toString();
-		System.out.println(str);
+		//System.out.println(str);
 		assertTrue(str.startsWith("WARC/1.0"));
 		assertTrue(str.endsWith("[Record content suppressed. Use toString(INCLUDE_CONTENT) to see the content string.]\n"));
 	}

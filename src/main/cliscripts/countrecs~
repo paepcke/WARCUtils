@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+
+PROJ_DIR=../../..
+
+java -jar $PROJ_DIR/target/WARCUtils-1.0-SNAPSHOT.jar edu.stanford.warcutils.warcreader.WarcCounter "/tmp"

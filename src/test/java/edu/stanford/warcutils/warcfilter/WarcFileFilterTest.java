@@ -72,7 +72,6 @@ public class WarcFileFilterTest {
 	}
 
 	@Test
-	@Ignore
 	public void testConstructOutFileName() {
 		String outFileName = fileFilterWithTmpDir.constructOutFileName("/foo/bar/test.warc");
 		assertEquals("/tmp/filter_test_test.warc", outFileName);
@@ -81,7 +80,6 @@ public class WarcFileFilterTest {
 	}
 	
 	@Test
-	@Ignore
 	public void testFilteringDiscardIfMatches() throws IOException {
 		fileFilterWarcs = new WarcFileFilter(filesToFilter, 
 											  "WARC-Target-URI", 
