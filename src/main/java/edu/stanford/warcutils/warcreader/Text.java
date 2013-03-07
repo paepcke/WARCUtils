@@ -18,9 +18,9 @@ package edu.stanford.warcutils.warcreader;
  * limitations under the License.
  */
 
-import java.io.IOException;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;

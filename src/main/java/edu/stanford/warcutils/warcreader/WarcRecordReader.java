@@ -48,7 +48,6 @@ public class WarcRecordReader {
 	private WarcRecord valueWarcRecord = null;
 	private FileInputStream fileIn = null;
 	private String currentWarcFilePathName = null;
-	private Logger logger = null;
 	private StringBuilder errMsgs = null;
 	private Formatter strFormatter = new Formatter(errMsgs);
 	private LinkedList<File> allFiles = null;
@@ -221,7 +220,7 @@ public class WarcRecordReader {
 				fileIn = new FileInputStream(warcFilePath);
 				warcInStream = new DataInputStream (fileIn);
 			} catch (Exception e1) {
-				logger.info(strFormatter.format("Could not open WARC file %s.", warcFilePath.getAbsolutePath()).toString());
+				System.err.println(strFormatter.format("Could not open WARC file %s.", warcFilePath.getAbsolutePath()).toString());
 				return;
 			}
 		}

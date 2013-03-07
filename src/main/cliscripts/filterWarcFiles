@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Given a set of WARC file paths, or a directory containing WARC files,
+# plus a Java regular expression pattern, and a WARC record field name,
+# copy WARC records to new files, either only accepting matching records,
+# or rejecting matching records.
+
+SCRIPT_DIR=`dirname $0`
+PROJ_DIR=${SCRIPT_DIR}/../../..
+
+java -cp $PROJ_DIR/target/WARCUtils-1.0-SNAPSHOT-jar-with-dependencies.jar edu.stanford.warcutils.warcfilter.WarcFileFilter $@

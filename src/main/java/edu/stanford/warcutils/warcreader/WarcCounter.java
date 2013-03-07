@@ -5,8 +5,25 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 
+/**
+ * @author paepcke
+ *
+ *  Given a set of WARC file paths, or a directory that contains WARC files,
+ *  return a count of the WARC records. The WARC files may be gzipped, or
+ *  uncompressed.
+ * 
+ *  The class scans all files, and identifies true WARC records.
+ *
+ */
 public class WarcCounter {
 
+	/**
+	 * Count the WARC records contained in the given collection of File objects.
+	 * The files may be gzipped, or uncompressed.
+	 * @param warcFiles the set of File objects to examine
+	 * @return the sum of WARC records contained in all files. 
+	 * @throws IOException
+	 */
 	public static long count(Collection<File> warcFiles) throws IOException {
 		if (warcFiles.size() == 0)
 			throw new IOException("WarcCounter received an empty list of files/directories in which to count records.");
@@ -14,6 +31,14 @@ public class WarcCounter {
 		return doCount(recReader);
 	}
 
+	/**
+	 * Count the WARC records contained in the given directory.
+	 * The files may be gzipped, or uncompressed. All files in the
+	 * directory will be scanned for WARC records.
+	 * @param warcDir the directory to be examined.
+	 * @return the sum of WARC records contained in all files. 
+	 * @throws IOException
+	 */
 	public static long count(File warcDir) throws IOException {
 		WarcRecordReader recReader = new WarcRecordReader(warcDir);
 		return doCount(recReader);

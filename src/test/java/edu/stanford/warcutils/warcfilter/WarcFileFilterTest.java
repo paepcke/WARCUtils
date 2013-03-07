@@ -15,11 +15,11 @@ import org.apache.commons.io.FileUtils;
 import org.grep4j.core.model.Profile;
 import org.grep4j.core.model.ProfileBuilder;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import edu.stanford.warcutils.warcfilter.WarcFileFilter.FilterSense;
 import edu.stanford.warcutils.warcfilter.WarcFileFilter.WarcHeaderRetention;
+import edu.stanford.warcutils.warcreader.WarcCounter;
 
 
 public class WarcFileFilterTest {
@@ -32,6 +32,7 @@ public class WarcFileFilterTest {
 	
 	Profile warc0_18Profile = null;
 	Profile warc1_0Profile = null;
+	Profile	warc1_0ProfileInitial = null;	
 	
 	@Before
 	public void setUp() throws Exception {
@@ -42,9 +43,8 @@ public class WarcFileFilterTest {
 		fileFilterNoTmpDir = new WarcFileFilter(null, "filter_test_");
 
 		// For file filtering test:
-		Map<String, String> env = System.getenv();
 		// Get the file names:
-		File resourcesDir = FileUtils.getFile(env.get("HOME"),"EclipseWorkspaces/WARCUtils/src/test/resources");
+		File resourcesDir = FileUtils.getFile("src/test/resources");
 		filesToFilter = FileUtils.listFiles(resourcesDir, null, false);
 		// Delete all output files in preparation to creating them:
 		deleteTestOutputFiles();
@@ -56,8 +56,14 @@ public class WarcFileFilterTest {
 				.onLocalhost()
 				.build();
 		warc1_0Profile = ProfileBuilder.newBuilder()
-				.name("WarcFileFilter Test Output Warc1_8.warc")
+				.name("WarcFileFilter Test Output Warc1_0.warc")
 				.filePath("/tmp/filteredTest_tinyWarc1_0.warc")
+				.onLocalhost()
+				.build();
+		
+		warc1_0ProfileInitial = ProfileBuilder.newBuilder()
+				.name("WarcFileFilter Test input Warc1_0.warc")
+				.filePath("src/test/resources/tinyWarc1_0.warc")
 				.onLocalhost()
 				.build();
 		
@@ -104,4 +110,24 @@ public class WarcFileFilterTest {
 		assertEquals(1, (executing(grep(constantExpression("Content-Length"), on(warc1_0Profile))).totalLines()));
 	}
 
+	
+	@Test
+	public void testFilteringContent() throws IOException {
+		File origFile = new File("src/test/resources/tinyWarc1_0.warc");
+		assertEquals(1, (executing(grep(constantExpression("small_crawls"), on(warc1_0ProfileInitial))).totalLines()));
+		assertEquals(45, WarcCounter.count(origFile));
+		File fileToFilter = FileUtils.getFile("src/test/resources/tinyWarc1_0.warc");
+		fileFilterWarcs = new WarcFileFilter(fileToFilter, 
+											  "content", 
+											  "(?s).*small_crawls.*", 
+											  FilterSense.DISCARD_IF_MATCHES,
+											  tmpDirPath, 
+											  "filteredTest_",
+											  WarcHeaderRetention.RETAIN_WARC_HEADERS);
+
+		File filteredFile = new File("/tmp/filteredTest_tinyWarc1_0.warc");
+		assertEquals(0, (executing(grep(constantExpression("small_crawls"), on(warc1_0Profile))).totalLines()));
+		assertEquals(44, WarcCounter.count(filteredFile));
+	}	
+	
 }

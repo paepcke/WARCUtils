@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Given a set of WARC file paths, or a directory that contains WARC files,
+# return a count of the WARC records. The WARC files may be gzipped, or
+# uncompressed.
+
 SCRIPT_DIR=`dirname $0`
 PROJ_DIR=${SCRIPT_DIR}/../../..
 

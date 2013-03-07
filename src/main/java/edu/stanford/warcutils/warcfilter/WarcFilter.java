@@ -70,6 +70,7 @@ public class WarcFilter {
 		if (val == null)
 			return false;
 		Matcher m = regexPattern.matcher(val);
+		//boolean matches = m.matches();
 		return m.matches();
 	}
 	

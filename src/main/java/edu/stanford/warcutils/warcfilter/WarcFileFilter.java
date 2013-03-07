@@ -10,8 +10,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
@@ -46,6 +56,8 @@ public class WarcFileFilter {
 	
 	boolean DO_APPEND = true;
 	
+	static HelpFormatter helpFormatter;
+	
 	/**
 	 * Create file filter where output paths go to
 	 * same place as input files, the file names are
@@ -65,6 +77,40 @@ public class WarcFileFilter {
 		// This value will cause outputs to go to same directory
 		// as inputs:
 		this(pathFiles, warcKey, regexPattern, FilterSense.DISCARD_IF_NOT_MATCHES, null, "filtered_", WarcHeaderRetention.RETAIN_WARC_HEADERS);
+	}
+
+	/**
+	 * Create file filter with choice of where output files are
+	 * placed, and any prefix that is prepended to the output file names.
+	 * Source of WARC files may be a directory or an individual WARC file.
+	 * @param warcPath
+	 * @param warcKey
+	 * @param regexPattern
+	 * @param theFilterSense
+	 * @param theOutDirPath
+	 * @param theOutPrefix
+	 * @param headerRetention
+	 * @throws IOException
+	 */
+	public WarcFileFilter(File warcPath,
+						   String warcKey, 
+						   String regexPattern,
+						   FilterSense theFilterSense,
+						   String theOutDirPath,
+						   String theOutPrefix,
+						   WarcHeaderRetention headerRetention) throws IOException {
+		LinkedList<File> allFiles = new LinkedList<File>();
+		if (warcPath.isDirectory()) {
+			File[] dirFilePaths = warcPath.listFiles();
+			for (File filePath : dirFilePaths) {
+				allFiles.add(filePath);
+			}
+		} else
+			allFiles.add(warcPath);
+
+		initAll(allFiles, warcKey, regexPattern, theFilterSense,
+				theOutDirPath, theOutPrefix, headerRetention);
+		processFiles();
 	}
 	
 	
@@ -87,6 +133,15 @@ public class WarcFileFilter {
 						   String theOutDirPath,
 						   String theOutPrefix,
 						   WarcHeaderRetention headerRetention) throws IOException {
+		initAll(pathFiles, warcKey, regexPattern, theFilterSense,
+				theOutDirPath, theOutPrefix, headerRetention);
+		processFiles();
+	}
+
+	private void initAll(Collection<File> pathFiles, String warcKey,
+			String regexPattern, FilterSense theFilterSense,
+			String theOutDirPath, String theOutPrefix,
+			WarcHeaderRetention headerRetention) {
 		recReader = new WarcRecordReader(pathFiles);
 		// We need to close our output files, and start
 		// a new output files whenever the reader is done
@@ -100,7 +155,6 @@ public class WarcFileFilter {
 		filterSense = theFilterSense;
 		if (theOutDirPath != null)
 			outDir = new File(theOutDirPath);
-		processFiles();
 	}
 	
 	/**
@@ -224,12 +278,125 @@ public class WarcFileFilter {
 						new GZIPOutputStream(new FileOutputStream(fileName))));
 	}
 	
+	
+	private static void printHelp(Options theOptionsObj, HelpFormatter formatter) {
+	    formatter.printHelp( "WarcFileFilter [options] warcRecordFldName regexPattern files", theOptionsObj );		
+	}
+	
 	/**
 	 * @param args
+						   String warcKey, 
+						   String regexPattern,
+						   FilterSense theFilterSense,
+						   String theOutDirPath,
+						   String theOutPrefix,
+						   WarcHeaderRetention headerRetention
+						   String file
+						   
+requiredArgs, 
+	    				   warcKeyArg, 
+	    				   patternArg, 
+	    				   filterSenseArg, 
+	    				   outDirArg, 
+	    				   outPrefixArg, 
+	    				   dropWarcHeadersArg);						   
 	 */
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+	/**
+	 * @param args: options,warcKey,regexPattern,file1,file2,...
+	 * @throws IOException 
+	 */
+	@SuppressWarnings("static-access")
+	public static void main(String[] args) throws IOException {
+		
+		HelpFormatter formatter = new HelpFormatter();
+		
+		Option help 			= new Option( "help", "Print help message" );
+		Option dropWarcHeaders  = new Option( "dropWarcHeaders", "Remove WARC headers from qualifying records" );
+		Option rejectMatches    = new Option( "rejectMatches", "Keep matching records out of target copy. Exclusive with includeMatches" );
+		Option includeMatches   = new Option( "includeMatches", "Only include matching records in target copy. Exclusive with rejectMatches" );
+		Option outPrefix		= OptionBuilder.withArgName( "outPrefix" )
+											   .hasArg()
+											   .withDescription("Prefix to use for target file names" )
+											   .create( "outPrefix" );
+		Option outDir			= OptionBuilder.withArgName( "outDir" )
+											   .hasArg()
+											   .withDescription("Destination directory for filtered WARC files" )
+											   .create( "outDir" );
 
+		Options options = new Options();
+		options.addOption( help );
+		options.addOption( dropWarcHeaders );
+		options.addOption( rejectMatches );
+		options.addOption( includeMatches );
+		options.addOption( outPrefix );
+		options.addOption( outDir );
+
+		helpFormatter = new HelpFormatter();
+		CommandLineParser parser = new PosixParser();
+		CommandLine cmdLine = null;
+	    try {
+	        // Parse the command line arguments
+	        cmdLine = parser.parse( options, args );
+	    }
+	    catch( ParseException exp ) {
+	        // oops, something went wrong
+	        System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
+	    }
+	    
+	    // Ensure only either rejectMatches or includeMatches is specified:
+	    if (cmdLine.hasOption("rejectMatches") && cmdLine.hasOption("includeMatches")) {
+	    	System.err.println("Can only have either rejectMatches, or includeMatches, but not both.");
+	    	System.exit(-1);
+	    }
+	    if (cmdLine.hasOption("help")) {
+			formatter.printHelp( "WarcFileFilter", options );		
+			System.exit(0);
+	    }
+	    	
+	    String outPrefixArg  = cmdLine.getOptionValue("outPrefix", "filtered_");
+	    String outDirArg	 = cmdLine.getOptionValue("outDir", null);
+	    WarcHeaderRetention headerRetentionArg = WarcHeaderRetention.RETAIN_WARC_HEADERS;
+	    if (cmdLine.hasOption("dropWarcHeaders"))
+	    	headerRetentionArg = WarcHeaderRetention.DISCARD_WARC_HEADERS;
+
+	    FilterSense filterSenseArg = null;
+	    if (cmdLine.hasOption("rejectMatches"))
+	    	filterSenseArg = FilterSense.DISCARD_IF_MATCHES;
+	    else
+	    	filterSenseArg = FilterSense.DISCARD_IF_NOT_MATCHES;
+	    
+	    @SuppressWarnings("unchecked")
+		List<String> requiredArgs = cmdLine.getArgList();
+	    if (requiredArgs.size()< 3) {
+	    	printHelp(options, helpFormatter);
+	    	System.exit(-1);
+	    }
+	    String warcKeyArg    = requiredArgs.get(0);
+	    String patternArg    = requiredArgs.get(1);
+	    requiredArgs.remove(0);
+	    requiredArgs.remove(0);
+	    LinkedList<File> fileList = new LinkedList<File>();
+	    for (String filePath : requiredArgs)
+	    	fileList.add(new File(filePath));
+	    
+	    //*******************
+/*	    System.out.println(warcKeyArg +
+	    				   ", " + patternArg +
+	    				   ", " + filterSenseArg +
+	    				   ", " + outDirArg  +
+	    				   ", " + outPrefixArg +
+	    				   ", " + headerRetentionArg);
+	    for (File fileObj : fileList)
+	    	System.out.println(fileObj.getAbsolutePath());
+	    System.exit(0);
+*/	    //*******************	    
+	    
+	    new WarcFileFilter(fileList, 
+	    				   warcKeyArg, 
+	    				   patternArg, 
+	    				   filterSenseArg, 
+	    				   outDirArg, 
+	    				   outPrefixArg, 
+	    				   headerRetentionArg);
 	}
-
 }
