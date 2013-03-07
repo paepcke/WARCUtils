@@ -9,7 +9,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.grep4j.core.model.Profile;

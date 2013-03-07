@@ -168,7 +168,7 @@ public class WarcFileFilter {
 				outDir = new File(theOutDirPath);
 	}
 	
-	public void processFiles() throws IOException {
+	private void processFiles() throws IOException {
 		boolean filesLeft = true;
 		String content = null;
 		prepareOutputFile();
@@ -200,6 +200,7 @@ public class WarcFileFilter {
 		}
 	}
 
+	//******************private String 
 
 	/**
 	 * @throws FileNotFoundException
