@@ -54,9 +54,15 @@ public class CallBack {
         this.scope = scope;
     }
 
-    public Object invoke(Object... parameters) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
-        Method method = scope.getClass().getMethod(methodName, getParameterClasses(parameters));
-        return method.invoke(scope, parameters);
+    public Object invoke(Object... parameters) throws InvocationTargetException {
+    	try {
+    		Method method = scope.getClass().getMethod(methodName, getParameterClasses(parameters));
+    		return method.invoke(scope, parameters);
+    	} catch (IllegalAccessException e) {
+    		throw new InvocationTargetException(null, e.getMessage());
+    	} catch (NoSuchMethodException e1) {
+    		throw new InvocationTargetException(null, e1.getMessage());
+    	}
     }
 
     @SuppressWarnings("rawtypes")

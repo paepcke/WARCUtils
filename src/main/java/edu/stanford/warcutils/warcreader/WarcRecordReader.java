@@ -145,13 +145,13 @@ public class WarcRecordReader {
 					try {
 						if (callback != null)
 							callback.invoke(inFileJustFinished, "");
-					} catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e1) {
+					} catch (InvocationTargetException e1) {
 						throw new IOException("Requested file change callback to unknown method.");
 					}
 					keyWarcStreamPos = 0;
 					return false;
 				} 
-				catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e1) {
+				catch (InvocationTargetException e1) {
 					throw new IOException("Requested file change callback to unknown method.");
 				}				
 			}
