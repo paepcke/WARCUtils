@@ -373,8 +373,9 @@ requiredArgs,
 		
 		Option help 			= new Option( "help", "Print help message" );
 		Option dropWarcHeaders  = new Option( "dropWarcHeaders", "Remove WARC headers from qualifying records" );
-		Option rejectMatches    = new Option( "rejectMatches", "Keep matching records out of target copy. Exclusive with includeMatches" );
-		Option includeMatches   = new Option( "includeMatches", "Only include matching records in target copy. Exclusive with rejectMatches" );
+		Option rejectMatches    = new Option( "rejectMatches", "Keep matching records out of target copy. Exclusive with includeMatches and stripHTML" );
+		Option includeMatches   = new Option( "includeMatches", "Only include matching records in target copy. Exclusive with rejectMatches and stripHTML" );
+		Option stripHTML        = new Option( "stripHTML", "Strip HTML from all content. Exclusive with rejectMatches and includeMatches" );
 		Option outPrefix		= OptionBuilder.withArgName( "outPrefix" )
 											   .hasArg()
 											   .withDescription("Prefix to use for target file names" )
@@ -389,6 +390,7 @@ requiredArgs,
 		options.addOption( dropWarcHeaders );
 		options.addOption( rejectMatches );
 		options.addOption( includeMatches );
+		options.addOption( stripHTML );
 		options.addOption( outPrefix );
 		options.addOption( outDir );
 
@@ -409,6 +411,13 @@ requiredArgs,
 	    	System.err.println("Can only have either rejectMatches, or includeMatches, but not both.");
 	    	System.exit(-1);
 	    }
+	    
+	    // Ensure only stripHTML or reject/includeMatches:
+	    if (cmdLine.hasOption("stripHTML") && (cmdLine.hasOption("rejectMatches") || cmdLine.hasOption("includeMatches"))) {
+	    	System.err.println("If stripHTML, then the regex directives rejectMatches and includeMatches must not be given.");
+	    	System.exit(-1);
+	    }
+	    
 	    if (cmdLine.hasOption("help")) {
 			formatter.printHelp( "WarcFileFilter", options );		
 			System.exit(0);
@@ -423,19 +432,26 @@ requiredArgs,
 	    FilterSense filterSenseArg = null;
 	    if (cmdLine.hasOption("rejectMatches"))
 	    	filterSenseArg = FilterSense.DISCARD_IF_MATCHES;
-	    else
+	    else if (cmdLine.hasOption("includeMatches"))
 	    	filterSenseArg = FilterSense.DISCARD_IF_NOT_MATCHES;
+	    else if (cmdLine.hasOption("stripHTML"))
+			filterSenseArg = FilterSense.STRIP_HTML;
 	    
 	    @SuppressWarnings("unchecked")
 		List<String> requiredArgs = cmdLine.getArgList();
-	    if (requiredArgs.size()< 3) {
+	    if ((requiredArgs.size()< 3) && !cmdLine.hasOption("stripHTML")) {
 	    	printHelp(options, helpFormatter);
 	    	System.exit(-1);
 	    }
-	    String warcKeyArg    = requiredArgs.get(0);
-	    String patternArg    = requiredArgs.get(1);
-	    requiredArgs.remove(0);
-	    requiredArgs.remove(0);
+	    String warcKeyArg = null;
+	    String patternArg = null;
+	    if (!cmdLine.hasOption("stripHTML")) {
+	    	// If doing regex, grab the WARC key and pattern:
+	    	warcKeyArg    = requiredArgs.get(0);
+	    	patternArg    = requiredArgs.get(1);
+	    	requiredArgs.remove(0);
+	    	requiredArgs.remove(0);
+	    }
 	    LinkedList<File> fileList = new LinkedList<File>();
 	    for (String filePath : requiredArgs)
 	    	fileList.add(new File(filePath));
@@ -451,13 +467,19 @@ requiredArgs,
 	    	System.out.println(fileObj.getAbsolutePath());
 	    System.exit(0);
 */	    //*******************	    
-	    
-	    new WarcFileFilter(fileList, 
-	    				   warcKeyArg, 
-	    				   patternArg, 
-	    				   filterSenseArg, 
-	    				   outDirArg, 
-	    				   outPrefixArg, 
-	    				   headerRetentionArg);
+
+	    if (filterSenseArg == FilterSense.STRIP_HTML)
+		    new WarcFileFilter(fileList, 
+		    				   outDirArg, 
+		    				   outPrefixArg, 
+		    				   headerRetentionArg);
+	    else
+	    	new WarcFileFilter(fileList, 
+	    			warcKeyArg, 
+	    			patternArg, 
+	    			filterSenseArg, 
+	    			outDirArg, 
+	    			outPrefixArg, 
+	    			headerRetentionArg);
 	}
 }
