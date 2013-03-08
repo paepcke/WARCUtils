@@ -3,7 +3,6 @@ package edu.stanford.warcutils.warcfilter;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
 
-import edu.stanford.warcutils.warcfilter.WarcFileFilter.WarcHeaderRetention;
 import edu.stanford.warcutils.warcreader.WarcRecord;
 
  /**
@@ -25,15 +24,10 @@ public class HTMLStripper {
 		return cleanText;
 	}
 	
-	public static WarcRecord extractText(WarcRecord warcRecord, WarcHeaderRetention headRetention) {
+	public static WarcRecord extractText(WarcRecord warcRecord) {
 		String content = HTMLStripper.extractText(warcRecord.get("content"));
-		if (headRetention == WarcHeaderRetention.RETAIN_WARC_HEADERS) {
-			warcRecord.put("content", content);
-			warcRecord.put("content-length", Integer.toString(content.length()));
-			return warcRecord.toString(WarcRecord.INCLUDE_CONTENT);
-		}
-		else
-			return content;
+		warcRecord.put("content", content);
+		warcRecord.put("content-length", Integer.toString(content.length()));
+		return warcRecord;
 	}
-
 }

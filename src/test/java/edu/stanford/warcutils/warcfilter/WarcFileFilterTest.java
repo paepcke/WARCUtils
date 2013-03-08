@@ -128,5 +128,20 @@ public class WarcFileFilterTest {
 		assertEquals(0, (executing(grep(constantExpression("small_crawls"), on(warc1_0Profile))).totalLines()));
 		assertEquals(44, WarcCounter.count(filteredFile));
 	}	
+
+	@Test
+	public void testWholesaleHTMLStripping() throws IOException {
+		File origFile = new File("src/test/resources/tinyWarc0_18.warc");
+		assertEquals(6, WarcCounter.count(origFile));
+		File fileToFilter = FileUtils.getFile("src/test/resources/tinyWarc0_18.warc");
+		fileFilterWarcs = new WarcFileFilter(fileToFilter, 
+											  tmpDirPath, 
+											  "filteredTest_",
+											  WarcHeaderRetention.RETAIN_WARC_HEADERS);
+
+		File filteredFile = new File("/tmp/filteredTest_tinyWarc0_18.warc");
+		assertEquals(6, WarcCounter.count(filteredFile));
+	}	
+	
 	
 }

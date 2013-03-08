@@ -25,6 +25,7 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
+import edu.stanford.warcutils.warcreader.WarcRecord;
 import edu.stanford.warcutils.warcreader.WarcRecordReader;
 
 /**
@@ -34,8 +35,9 @@ import edu.stanford.warcutils.warcreader.WarcRecordReader;
 public class WarcFileFilter {
 	
 	enum FilterSense {
-		DISCARD_IF_MATCHES,
-		DISCARD_IF_NOT_MATCHES
+		DISCARD_IF_MATCHES,      // for regex type filters
+		DISCARD_IF_NOT_MATCHES,  // for regex type filters
+		STRIP_HTML               // HTML detag filter
 	}
 	
 	enum WarcHeaderRetention {
@@ -138,10 +140,50 @@ public class WarcFileFilter {
 		processFiles();
 	}
 
-	private void initAll(Collection<File> pathFiles, String warcKey,
-			String regexPattern, FilterSense theFilterSense,
-			String theOutDirPath, String theOutPrefix,
-			WarcHeaderRetention headerRetention) {
+	
+	public WarcFileFilter(File warcPath,
+						   String theOutDirPath,
+						   String theOutPrefix,
+						   WarcHeaderRetention headerRetention) throws IOException {
+		LinkedList<File> allFiles = new LinkedList<File>();
+		if (warcPath.isDirectory()) {
+			File[] dirFilePaths = warcPath.listFiles();
+			for (File filePath : dirFilePaths) {
+				allFiles.add(filePath);
+			}
+		} else
+			allFiles.add(warcPath);
+
+		initAll(allFiles, "", "", FilterSense.STRIP_HTML,
+				theOutDirPath, theOutPrefix, headerRetention);
+		processFiles();
+	}
+	
+	
+	/**
+	 * Stripping HTML from all WARC contents, which is also a kind of filter.
+	 * @param pathFiles
+	 * @param theOutDirPath
+	 * @param theOutPrefix
+	 * @param headerRetention
+	 * @throws IOException
+	 */
+	public WarcFileFilter(Collection<File> pathFiles, 
+						   String theOutDirPath,
+						   String theOutPrefix,
+						   WarcHeaderRetention headerRetention) throws IOException {
+		initAll(pathFiles, "", "", FilterSense.STRIP_HTML,
+				theOutDirPath, theOutPrefix, headerRetention);
+		processFiles();
+	}
+	
+	private void initAll(Collection<File> pathFiles, 
+					     String warcKey,
+					     String regexPattern, 
+					     FilterSense theFilterSense,
+					     String theOutDirPath, 
+					     String theOutPrefix,
+					     WarcHeaderRetention headerRetention) {
 		recReader = new WarcRecordReader(pathFiles);
 		// We need to close our output files, and start
 		// a new output files whenever the reader is done
@@ -171,6 +213,7 @@ public class WarcFileFilter {
 	private void processFiles() throws IOException {
 		boolean filesLeft = true;
 		String content = null;
+		WarcRecord rec = null;
 		prepareOutputFile();
 		
 		while (filesLeft) {
@@ -178,18 +221,11 @@ public class WarcFileFilter {
 				filesLeft = false;
 				continue;
 			}
-			// Grab record with or without the WARC header, depending
-			// on the regex match:
-			if (keepWarcHeaders == WarcHeaderRetention.RETAIN_WARC_HEADERS)
-				if (filterSense == FilterSense.DISCARD_IF_MATCHES)
-					content = filter.allIfNot(recReader.getCurrentValue());
-				else
-					content = filter.allIf(recReader.getCurrentValue());
+			rec = recReader.getCurrentValue();
+			if (filterSense == FilterSense.STRIP_HTML)
+				content = detagFilter(rec);
 			else
-				if (filterSense == FilterSense.DISCARD_IF_MATCHES)
-					content = filter.contentsIfNot(recReader.getCurrentValue());
-				else
-					content = filter.contentsIf(recReader.getCurrentValue());
+				content = regexFilter(rec);
 			if (content == null)
 				// Record not wanted: matches the filter regexp:
 				continue;
@@ -200,7 +236,31 @@ public class WarcFileFilter {
 		}
 	}
 
-	//******************private String 
+	private String regexFilter(WarcRecord rec) {
+		String content = null;
+		// Grab record with or without the WARC header, depending
+		// on the regex match:
+		if (keepWarcHeaders == WarcHeaderRetention.RETAIN_WARC_HEADERS)
+			if (filterSense == FilterSense.DISCARD_IF_MATCHES)
+				content = filter.allIfNot(recReader.getCurrentValue());
+			else
+				content = filter.allIf(recReader.getCurrentValue());
+		else
+			if (filterSense == FilterSense.DISCARD_IF_MATCHES)
+				content = filter.contentsIfNot(recReader.getCurrentValue());
+			else
+				content = filter.contentsIf(recReader.getCurrentValue());
+		return content;
+	}
+	
+	private String detagFilter(WarcRecord rec) {
+		WarcRecord strippedRec = HTMLStripper.extractText(rec);
+		// Turn to string:
+		if (keepWarcHeaders == WarcHeaderRetention.RETAIN_WARC_HEADERS)
+			return strippedRec.toString(true) + "\n\n";
+		else
+			return strippedRec.get("content") + "\n\n";
+	}
 
 	/**
 	 * @throws FileNotFoundException

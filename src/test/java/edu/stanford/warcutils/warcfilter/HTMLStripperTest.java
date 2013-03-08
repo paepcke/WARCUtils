@@ -10,7 +10,6 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 
-import edu.stanford.warcutils.warcfilter.WarcFileFilter.WarcHeaderRetention;
 import edu.stanford.warcutils.warcreader.WarcRecord;
 import edu.stanford.warcutils.warcreader.WarcRecordReader;
 
@@ -30,7 +29,7 @@ public class HTMLStripperTest {
 		complexHTML = FileUtils.readFileToString(new File("src/test/resources/messyHtml.html"));
 		wikipediaHTML = FileUtils.readFileToString(new File("src/test/resources/wikipediaHtml.html"));
 		
-		warcReader = new WarcRecordReader(new File("src/test/resources/tinyWarc1_0.warc"));
+		warcReader = new WarcRecordReader(new File("src/test/resources/tinyWarc0_18.warc"));
 	}
 	
 	@Test
@@ -57,7 +56,7 @@ public class HTMLStripperTest {
 	
 	@Test
 	public void testExtractFromWarcRecord() throws IOException {
-		String res = null;
+		WarcRecord res = null;
 		boolean foundHtmlRecord = false;
 		WarcRecord rec = null;
 		String recID = null;
@@ -66,12 +65,19 @@ public class HTMLStripperTest {
 			rec = warcReader.getCurrentValue();
 			if (rec == null)
 				fail("Did not find recordID");
+			
 			recID = rec.get("WARC-Record-ID");
-			if (recID.contains("<urn:uuid:a2e9947f-607f-4ad7-b96e-89bfc5f4fad9>"))
+			if (recID.contains("<urn:uuid:721f9a28-6b9a-44c1-bccd-8c7accb514cd>"))
 				foundHtmlRecord = true;
 		}
-		res = HTMLStripper.extractText(rec, WarcHeaderRetention.RETAIN_WARC_HEADERS);
-		System.out.println(res);
+		// Len before strip
+		assertEquals("21064", rec.get("content-length"));
+		assertEquals(21064, rec.get("content").length());
+
+		// Len before strip
+		res = HTMLStripper.extractText(rec);
+		assertEquals("5702", res.get("content-length"));
+		assertEquals(5702, res.get("content").length());
 	}
 
 }
