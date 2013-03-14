@@ -317,6 +317,8 @@ public class WarcFileFilter {
 	}
 	
 	public boolean isGzipped(String fileName) {
+		if (fileName == null)
+			return false;
 		return (FilenameUtils.getExtension(fileName).equals("gz")); 
 	}
 	
